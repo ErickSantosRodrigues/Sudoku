@@ -6,8 +6,12 @@ use rand::Rng;
 //     vec<i32>
 // }
 
-fn print_game(map: Vec<Vec<i32>>) {
-    
+fn print_game(map: &Vec<Vec<i32>>) {
+    map.into_iter()
+        .map(| x| x.into_iter()
+                   .map(|y| y)
+                   .for_each(|t| print!("| {:?} |", t)))
+        .for_each(|()| println!(""));
 }
 
 fn main() {
@@ -20,7 +24,7 @@ fn main() {
         }
         map.push(new);
     }
-
-    println!("{:?}", map);
+    print_game(&map);
+    // println!("{:?}", map);
 
 }
