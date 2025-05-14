@@ -1,78 +1,118 @@
+use rand::seq::SliceRandom;
 use rand::Rng;
 
 #[derive(Debug)]
 pub struct Sudoku {
-    map: Vec<Vec<i32>>
+    map: Vec<Vec<i32>>,
 }
 
 impl Sudoku {
-    pub fn new() -> Sudoku { 
-        let mut sudoku = Sudoku {map: Vec::new()};
-        for _a in 0..9 as usize{
-            let mut new: Vec<i32> = Vec::new();
-            for _b in 0..9 as usize{
-                new.push(10);
-            }
-        sudoku.map.push(new);
-        }
-        sudoku.print_game();
-        // for i in 0..9 {
-        //     for j in 0..9 {
-        //         sudoku.map[i][j] = (i * 3 + i / 3 + j) as i32 % 9 + 1;
-        //     }
-        //     sudoku.print_game();
-        // }
-        sudoku.valid_game();
+    pub fn new() -> Sudoku {
+        let mut sudoku = Sudoku {
+            map: vec![vec![0; 9]; 9],
+        };
+        sudoku.generate_valid_game();
         sudoku
-    } 
- 
-    fn valid_game(&mut self) {
+    }
+
+    fn generate_valid_game(&mut self) {
+        self.fill_diagonal_boxes();
+
+        self.solve_remaining(0, 3);
+    }
+
+    fn fill_diagonal_boxes(&mut self) {
         let mut rng = rand::thread_rng();
-        for a in 0..9 as usize{
-            for b in 0..9 as usize{
-                loop {
-                    let new_nun = rng.gen_range(1..=9); //the error is in the generation order, once there is no options for the last
-                                    //number it will never be able to finish the process since it can`t put any other used number in that location
-                    let mut cont = 0;
-                    cont += 1;
-                    self.map[a][b] = new_nun;
-                    if !self.check_for_retitive_nunbers(a , b) || cont > 10 { break; }
+        for box_idx in 0..3 {
+            let mut numbers: Vec<i32> = (1..=9).collect();
+            numbers.shuffle(&mut rng);
+
+            let start_row = box_idx * 3;
+            let start_col = box_idx * 3;
+
+            let mut index = 0;
+            for i in 0..3 {
+                for j in 0..3 {
+                    self.map[start_row + i][start_col + j] = numbers[index];
+                    index += 1;
                 }
-                    println!("line: {}, column: {}, n: {}", a, b, self.map[a][b]); 
             }
-            self.print_game();
-            println!("finished line");
         }
     }
 
-    fn check_for_retitive_nunbers(&self, line: usize, column: usize) -> bool {
-        let number = self.map[line][column];
-        for a in 0..9 {
-            if a != line && self.map[a][column] == number { return true; }
-        }
-        for b in 0..9 {
-            if b != column && self.map[line][b] == number { return true; }
-        }
-        let s_line = (line / 3) * 3;
-        let s_column = (column / 3) * 3;
-        for i in s_line..s_line + 3 {
-            for j in s_column..s_column + 3 {
-                if i != line && j != column && self.map[i][j] == self.map[line][column] {
+    fn solve_remaining(&mut self, i: usize, j: usize) -> bool {
+        let mut i = i;
+        let mut j = j;
+
+        if j >= 9 {
+            j = 0;
+            i += 1;
+            if i >= 9 {
                 return true;
+            }
+        }
+
+        // Skip already filled cells (diagonal boxes)
+        if i < 3 && j < 3 {
+            return self.solve_remaining(i, j + 1);
+        } else if i >= 3 && i < 6 && j >= 3 && j < 6 {
+            return self.solve_remaining(i, j + 1);
+        } else if i >= 6 && j >= 6 {
+            return self.solve_remaining(i, j + 1);
+        }
+
+        let mut numbers: Vec<i32> = (1..=9).collect();
+        let mut rng = rand::thread_rng();
+        numbers.shuffle(&mut rng);
+
+        for &num in &numbers {
+            if self.is_safe(i, j, num) {
+                self.map[i][j] = num;
+
+                if self.solve_remaining(i, j + 1) {
+                    return true;
+                }
+
+                self.map[i][j] = 0;
+            }
+        }
+
+        false
+    }
+
+    fn is_safe(&self, row: usize, col: usize, num: i32) -> bool {
+        for j in 0..9 {
+            if self.map[row][j] == num {
+                return false;
+            }
+        }
+
+        for i in 0..9 {
+            if self.map[i][col] == num {
+                return false;
+            }
+        }
+        let box_row = row - row % 3;
+        let box_col = col - col % 3;
+
+        for i in 0..3 {
+            for j in 0..3 {
+                if self.map[box_row + i][box_col + j] == num {
+                    return false;
                 }
             }
         }
-        false
 
+        true
     }
+
     pub fn print_game(&self) {
-        self.map.iter()
-            .map(| x| x.into_iter()
-                       .map(|y| y)
-                       .for_each(|t| print!("| {:?} |", t)))
-            .for_each(|()| println!(""));
-        println!("");
+        for row in &self.map {
+            for &num in row {
+                print!("| {:2} |", num);
+            }
+            println!();
+        }
+        println!();
     }
-
-
 }
